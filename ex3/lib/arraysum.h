@@ -1,0 +1,1 @@
+void arrSum(int *arr1, int *arr2, int size, int *res);
