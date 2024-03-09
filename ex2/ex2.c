@@ -6,71 +6,94 @@
 */
 
 #define MAXROWLEN 10
-#define MAXARRLEN 10
+#define MAXARRLEN 100
 #include <stdio.h>
 #include <stdlib.h>
+
+/*
+*   Array structure that contains the array and its size.
+*/
+struct vec{
+    int *val;   // The array.
+    int size;    // Number of its elements.
+};
 
 /*
 *   Sum two arrays of the same length.
 *
 *   @param arr1 The first array.
 *   @param arr2 The second array.
-*   @param size The size of the arrays.
-*   @param res The pointer to the array where the result has to be saved.
+*   @param res The location where the result has to be saved.
 */
-void arrSum(int *arr1, int *arr2, int size, int *res){
-    for(int i = 0; i< size; i++)
-        res[i] = arr1[i] + arr2[i];
+void arrSum(struct vec arr1, struct vec arr2, struct vec *res){
+    if(arr1.size != arr2.size) exit(1);
+    res->val = malloc(arr1.size * sizeof(int));
+    if(res->val == NULL) exit(1);
+    res->size = arr1.size;
+    for(int i = 0; i< arr1.size; i++)
+        res->val[i] = arr1.val[i] + arr2.val[i];
 }
 
 /*
-*   Read an array from a file containing a integer every line.
+*   Read an array from a file containing an integer every line.
 *
 *   @param path The path of the file containing the array.
-*   @param res A pointer to the array where the result has to be saved
-*   @return The size of the array.
+*   @param arr The location to save the array.
 */
-int readArray(char path[], int *res){
+void readArray(char path[], struct vec *arr){
     FILE *fp;
     fp = fopen(path,"r");
     char buf[MAXROWLEN];
-    int n_count = 0;
+    int r_count = 0;
+    arr->val = malloc(MAXARRLEN * sizeof(int));
+    if(arr->val == NULL) exit(1);
     while(fgets(buf, sizeof(buf), fp) != NULL){
-        res[n_count] += atoi(buf);
-        n_count += 1;
+        arr->val[r_count] = atoi(buf);
+        r_count += 1;
     }
+    arr->size = r_count;
     fclose(fp);
-    return n_count;
 }
 
 /*
 *   Print an array to stdout.
 *
 *   @param a The array.
-*   @param size The size of the array.
 */
-void printArray(int *a, int size){
+void printArray(struct vec a){
     printf("[");
-    for(int i = 0; i<size; i++){
-        if(i == 0)   printf("%d,", a[i]);
-        else if(i == size-1)    printf(" %d", a[i]);
-        else    printf(" %d,", a[i]);
+    for(int i = 0; i<a.size; i++){
+        if(i == 0)   printf("%d,", a.val[i]);
+        else if(i == a.size-1)    printf(" %d", a.val[i]);
+        else    printf(" %d,", a.val[i]);
     }
     printf("]\n");
 }
 
 void main(){
-    int *arr1;
-    arr1 = malloc(MAXARRLEN * sizeof(int));
-    int *arr2;
-    arr2 = malloc(MAXARRLEN * sizeof(int));
-
-    int size = readArray("./array1.txt", arr1);
+    //read
+    struct vec *arr1;
+    arr1 = malloc(sizeof(struct vec));
+    arr1->val = malloc(MAXARRLEN * sizeof(int));
+    readArray("./array1.txt", arr1);
+    struct vec *arr2;
+    arr2 = malloc(sizeof(struct vec));
+    arr2->val = malloc(MAXARRLEN * sizeof(int));
     readArray("./array2.txt", arr2);
 
-    int *sum;
-    sum = malloc(MAXARRLEN * sizeof(int));
-    arrSum(arr1, arr2, size, sum);
+    //optimize memory occupation
+    arr1->val = realloc(arr1->val, arr1->size * sizeof(int));
+    arr2->val = realloc(arr2->val, arr2->size * sizeof(int));
 
-    printArray(sum, size);
+    //sum
+    struct vec *sum;
+    sum = malloc(sizeof(struct vec));
+    sum->val = malloc(arr1->size * sizeof(int));
+
+    arrSum(*arr1, *arr2, sum);   
+    printArray(*sum);
+
+    free(arr1);
+    free(arr2);
+    free(sum);
 }
