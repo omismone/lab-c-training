@@ -21,60 +21,71 @@
 *   9
 */
 
-#define MAXFILEROWLEN 100
+#define MAXFILEROWLEN 11 //based on integer limit
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 /*
-*   Read a matrix from a file containing in the first row dimensions(e.g. 3 3 for 3x3 matrixes) and a integer every line(left to right, up to down).
-*
-*   @param path The path of the file containing the matrix.
-*   @param size Pointer to a 2 elements array where to start saving the size of the matrix.
-*   @return The matrix.
+*   Matrix structure that contains the matrix and its size.
 */
-int **readMatrix(char path[], int *size){
+struct matrix{
+    int **val;   // The values.
+    int *size;    // size[0] # of rows, size[1] # of cols.
+};
+
+/*
+*   Read a matrix from a file.
+*
+*   @see The convention in the first lines of the .c file.
+*   @param path The path of the file containing the matrix.
+*   @param mat The place to save the matrix.
+*/
+void readMatrix(char path[], struct matrix *mat){
     FILE *fp;
     fp = fopen(path,"r");
     char buf[MAXFILEROWLEN];
-    int **mat;
-    int rows, cols;
-    sscanf(fgets(buf, sizeof(buf), fp), "%d %d", &rows, &cols);
-    size[0] = rows;
-    size[1] = cols;
-
-    mat = malloc(rows * sizeof(int));
-    for(int i=0; i<rows; i++){
-        mat[i] = malloc(cols * sizeof(int));
-        for(int j=0; j<cols; j++){
+    fgets(buf, sizeof(buf), fp);
+    if(buf == NULL) exit(1);
+    mat->size = malloc(2 * sizeof(int));
+    if(sscanf(buf, "%d %d", &(mat->size[0]), &(mat->size[1])) != 2) exit(1);
+    
+    mat->val = malloc(mat->size[0] * sizeof(int));
+    if(mat->val == NULL)    exit(1);
+    for(int i=0; i<mat->size[0]; i++){
+        mat->val[i] = malloc(mat->size[1] * sizeof(int));
+        if(mat->val[i] == NULL) exit(1);
+        for(int j=0; j<mat->size[1]; j++){
             fgets(buf, sizeof(buf), fp);
-            mat[i][j] = atoi(buf);
+            if(buf == NULL) exit(1);
+            mat->val[i][j] = atoi(buf);
         }
     }
     fclose(fp);
-    return mat;
 }
 
 /*
 *   Print a matrix to stdout.
 *
-*   @param mat Pointer to the pointer indicating where the matrix starts.
-*   @param size Pointer to a 2 elements array that contains the size of the matrix.
+*   @param mat The matrix.
 */
-void printMatrix(int **mat, int *size){
-    for(int i=0; i<size[0]; i++){
-        for(int j=0; j<size[1]; j++){
-            printf("%d ", mat[i][j]);
+void printMatrix(struct matrix *mat){
+    for(int i=0; i<mat->size[0]; i++){
+        for(int j=0; j<mat->size[1]; j++){
+            printf("%d ", mat->val[i][j]);
         }
         printf("\n");
     }
 }
 
 void main(){
-    int *size, **mat;
-    size = malloc(2 * sizeof(int));
-    mat = readMatrix("./matrix.txt", size);
-    printMatrix(mat,size);
-    free(*mat);
-    free(size);
+    //read
+    struct matrix mat;
+    readMatrix("./matrix.txt", &mat);
+
+    //print
+    printMatrix(&mat);
+
+    free(mat.size);
+    free(*mat.val);
 }
