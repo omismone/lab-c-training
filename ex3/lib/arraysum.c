@@ -1,12 +1,16 @@
+#include <stdlib.h>
+#include "omislib.h"
+
 /*
 *   Sum two arrays of the same length.
 *
 *   @param arr1 The first array.
 *   @param arr2 The second array.
-*   @param size The size of the arrays.
-*   @param res The pointer to the array where the result has to be saved.
+*   @param res The location to save the sum.
 */
-void arrSum(int *arr1, int *arr2, int size, int *res){
-    for(int i = 0; i< size; i++)
-        res[i] = arr1[i] + arr2[i];
+void arrSum(struct vec arr1, struct vec arr2, struct vec *sum){
+    if(arr1.size != arr2.size) exit(1);
+    sum->size = arr1.size;
+    for(int i = 0; i< arr1.size; i++)
+        sum->val[i] = arr1.val[i] + arr2.val[i];
 }
