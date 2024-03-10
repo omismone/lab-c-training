@@ -4,94 +4,123 @@
 *   Scrivere su file la matrice a media nulla, per calcolarla:
 *   1)  calcola media di ogni riga e ottieni un vettore.
 *   2)  sottrai vettore ad ogni riga della matrice.
+*   -----------------------------------------
+*   CONVENZIONE
+*   Sul file prima la riga contiene dimensioni, in seguito un valore per riga, da sx a dx e da alto in basso.
+*   ESEMPIO
+*   ⌈1 2 3⌉
+*   |4 5 6|     MATRICE
+*   ⌊7 8 9⌋ 
+*
+*   3 3
+*   1
+*   2
+*   3
+*   4           FILE
+*   5
+*   6
+*   7
+*   8
+*   9
 */
 
-#define MAXFILEROWLEN 100
+#define MAXFILEROWLEN 11 //based on integer limits
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-
 /*
-*   Subtract two arrays of the same length.
-*
-*   @param arr1 The first array.
-*   @param arr2 The second array.
-*   @param size The size of the arrays.
-*   @param res The pointer to the array where the result has to be saved.
+*   Matrix structure that contains the matrix and its size.
 */
-void arrSub(int *arr1, float *arr2, int size, float *res){
-    for(int i = 0; i< size; i++)
-        res[i] = arr1[i] - arr2[i];
-}
+struct matrix{
+    float **val;   // The values.
+    int *size;    // size[0] # of rows, size[1] # of cols.
+};
 
 /*
-*   Read a matrix from a file containing in the first row dimensions(e.g. 3 3 for 3x3 matrixes) and a integer every line(left to right, up to down).
+*   Array structure that contains the array and its size.
+*/
+struct vec{
+    float *val;   // The array.
+    int size;    // Number of its elements.
+};
+
+
+/*
+*   Read a matrix from a file.
 *
+*   @see The convention in the first lines of the .c file.
 *   @param path The path of the file containing the matrix.
-*   @param size Pointer to a 2 elements array where to start saving the size of the matrix.
-*   @return The matrix.
+*   @param mat The place to save the matrix.
 */
-int **readMatrix(char path[], int *size){
+void readMatrix(char path[], struct matrix *mat){
     FILE *fp;
     fp = fopen(path,"r");
     char buf[MAXFILEROWLEN];
-    int **mat;
-    int rows, cols;
-    sscanf(fgets(buf, sizeof(buf), fp), "%d %d", &rows, &cols);
-    size[0] = rows;
-    size[1] = cols;
-
-    mat = malloc(rows * sizeof(int));
-    for(int i=0; i<rows; i++){
-        mat[i] = malloc(cols * sizeof(int));
-        for(int j=0; j<cols; j++){
+    fgets(buf, sizeof(buf), fp);
+    if(buf == NULL) exit(1);
+    mat->size = malloc(2 * sizeof(int));
+    if(mat->size == NULL) exit(1);
+    if(sscanf(buf, "%d %d", &(mat->size[0]), &(mat->size[1])) != 2) exit(1);
+    
+    mat->val = malloc(mat->size[0] * sizeof(int));
+    if(mat->val == NULL)    exit(1);
+    for(int i=0; i<mat->size[0]; i++){
+        mat->val[i] = malloc(mat->size[1] * sizeof(int));
+        if(mat->val[i] == NULL) exit(1);
+        for(int j=0; j<mat->size[1]; j++){
             fgets(buf, sizeof(buf), fp);
-            mat[i][j] = atoi(buf);
+            if(buf == NULL) exit(1);
+            mat->val[i][j] = atoi(buf);
         }
     }
     fclose(fp);
-    return mat;
 }
 
 /*
 *   Calculate the mean of each row of a matrix.
 *
 *   @param mat The matrix.
-*   @param size An array of two elements containing # of rows and # of cols.
-*   @return An array in which every i-item is the mean of row i of the matrix. 
+*   @param res The place to save the result.
 */
-float *calculateMeans(int **mat, int *size){
-    float *means;
-    means = malloc(size[0] * sizeof(float));
-    for(int i=0; i<size[0]; i++){
+void calculateMeans(struct matrix *mat, struct vec *res){
+    res->size = mat->size[0];
+    res->val = malloc(res->size * sizeof(float));
+    if(res->val == NULL) exit(1);
+    for(int i=0; i<res->size; i++){
         float sum = 0;
-        for(int j=0; j<size[1]; j++){
-            sum += mat[i][j];
+        for(int j=0; j<mat->size[1]; j++){
+            sum += mat->val[i][j];
         }
-        means[i] = sum/size[1];
+        res->val[i] = sum/(mat->size[1]);
     }
-    return means;
 }
 
 /*
 *   Calculate the zero-meaned matrix from a matrix.
 *   
 *   @param mat The matrix.
-*   @size An array of two elements containing # of rows and # of cols.
-*   @return The zero-meaned matrix.
+*   @param z The zero-meaned matrix.
 */
-float **calculateZeroMeaned(int **mat, int *size){
-    float **z;
-    float *means;
-    means = calculateMeans(mat, size);
-    //allocate and calculate
-    z = malloc(size[0] * sizeof(float));
-    for(int j=0; j<size[0]; j++){
-        z[j] = malloc(size[1] * sizeof(float));
-        arrSub(mat[j], means, size[0], z[j]);
+void calculateZeroMeaned(struct matrix *mat, struct matrix *z){
+    z->size = malloc(2 * sizeof(int));
+    z->size = mat->size;
+    z->val = malloc(z->size[0] * sizeof(float));
+    if(z->val == NULL) exit(1);
+
+    struct vec *mean;
+    mean = malloc(sizeof(struct vec)); //i need to allocate mean here, if i put the allocation in the function it gives seg fault, WHY? i can't define mean as a normal struct either!
+    if(mean == NULL) exit(1);
+    calculateMeans(mat, mean);
+
+    for(int j=0; j<mat->size[0]; j++){
+        z->val[j] = malloc(z->size[1] * sizeof(float));
+        if(z->val[j] == NULL)   exit(1);
+        //subtract
+        for(int k=0; k<mean->size; k++){
+            z->val[j][k] = mat->val[j][k] - mean->val[k];
+        }
     }
-    return z;
 }
 
 /*
@@ -99,33 +128,37 @@ float **calculateZeroMeaned(int **mat, int *size){
 *   
 *   @param path The path of the file.
 *   @param mat The matrix.
-*   @param size An array of two elements containing # of rows and # of cols.
 */
-void printMatrixToFile(char path[], float **mat, int *size){
+void printMatrixToFile(char path[], struct matrix *mat){
     FILE *fp;
     fp = fopen(path,"w");
-    fprintf(fp, "%d %d\n", size[0], size[1]);
+    fprintf(fp, "%d %d\n", mat->size[0], mat->size[1]);
     fclose(fp);
     fp = fopen(path, "a");
-    for(int i=0; i<size[0]; i++){
-        for(int j=0; j<size[1]; j++){
-            fprintf(fp, "%.2f", mat[i][j]);
-            if(j != size[1]-1)  fprintf(fp, " ");
+    for(int i=0; i<mat->size[0]; i++){
+        for(int j=0; j<mat->size[1]; j++){
+            fprintf(fp, "%.2f", (float)mat->val[i][j]);
+            if(j != mat->size[1]-1)  fprintf(fp, " ");
         }
         fprintf(fp, "\n");
     }
     fclose(fp);
 }
 
+
 void main(){
-    int *size, **mat;
-    size = malloc(2 * sizeof(int));
-    mat = readMatrix("./matrix.txt", size);
+    //read
+    struct matrix mat;
+    readMatrix("./matrix.txt", &mat);
+
     //calculate
-    float **z;
-    z = calculateZeroMeaned(mat, size);
+    struct matrix z;
+    calculateZeroMeaned(&mat, &z);
+
+
     //print
-    printMatrixToFile("./out.txt", z, size);
-    free(*z);
-    free(size);
+    printMatrixToFile("./out.txt", &z);
+    free(*mat.val);
+    free(mat.size);
+    free(*z.val);
 }
