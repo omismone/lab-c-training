@@ -1,9 +1,6 @@
 /*
 *   RICHIESTA
-*   Scrivere una funzione che calcola la media di ogni riga della matrice.
-*   Scrivere su file la matrice a media nulla, per calcolarla:
-*   1)  calcola media di ogni riga e ottieni un vettore.
-*   2)  sottrai vettore ad ogni riga della matrice.
+*   Stessa dell'esercizio 5, con la differenza di usare una matrice allocata linearmente.
 *   -----------------------------------------
 *   CONVENZIONE
 *   Sul file prima la riga contiene dimensioni, in seguito un valore per riga, da sx a dx e da alto in basso.
@@ -29,12 +26,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+
 /*
-*   Matrix structure that contains the matrix and its size.
+*   Matrix structure that contains the matrix and its size. //optimizing memory access linear.
 */
-struct matrix{
-    float **val;   // The values.
-    int *size;    // size[0] # of rows, size[1] # of cols.
+struct linearmatrix{
+    float *val;   // The values.
+    int size[2];    // size[0] # of rows, size[1] # of cols.
 };
 
 /*
@@ -47,47 +45,43 @@ struct vec{
 
 
 /*
-*   Read a matrix from a file.
+*   Read a matrix from a file allocating contiguous memory spaces. //optimizing memory access speed
 *
 *   @see The convention in the first lines of the .c file.
 *   @param path The path of the file containing the matrix.
 *   @param mat The place to save the matrix.
 */
-void readMatrix(char path[], struct matrix *mat){
+void readLinMatrix(char path[], struct linearmatrix *mat){
     FILE *fp;
     fp = fopen(path,"r");
     char buf[MAXFILEROWLEN];
     fgets(buf, sizeof(buf), fp);
     if(buf == NULL) exit(1);
-    mat->size = malloc(2 * sizeof(int));
-    if(mat->size == NULL) exit(1);
     if(sscanf(buf, "%d %d", &(mat->size[0]), &(mat->size[1])) != 2) exit(1);
     
-    mat->val = malloc(mat->size[0] * sizeof(int*));
-    if(mat->val == NULL)    exit(1);
-    for(int i=0; i<mat->size[0]; i++){
-        mat->val[i] = malloc(mat->size[1] * sizeof(float));
-        if(mat->val[i] == NULL) exit(1);
-        for(int j=0; j<mat->size[1]; j++){
-            fgets(buf, sizeof(buf), fp);
-            if(buf == NULL) exit(1);
-            mat->val[i][j] = atoi(buf);
-        }
+    //allocating
+    mat->val = malloc(mat->size[0] * mat->size[1] * sizeof(float));
+    for(int i=0; i<mat->size[0] * mat->size[1]; i++){
+        fgets(buf, sizeof(buf), fp);
+        if(buf == NULL) exit(1);
+        mat->val[i] = atoi(buf);
     }
+
     fclose(fp);
 }
 
+
 /*
-*   Calculate the mean of each row of a matrix.
+*   Calculate the mean of each row of a linear matrix.
 *
-*   @param mat The matrix.
+*   @param mat The linear matrix.
 *   @param res The place to save the result.
 */
-void calculateMeans(struct matrix *mat, struct vec *res){
+void calculateMeans(struct linearmatrix *mat, struct vec *res){
     for(int i=0; i<res->size; i++){
         float sum = 0;
         for(int j=0; j<mat->size[1]; j++){
-            sum += mat->val[i][j];
+            sum += mat->val[i*mat->size[1]+j];
         }
         res->val[i] = sum/(mat->size[1]);
     }
@@ -95,12 +89,12 @@ void calculateMeans(struct matrix *mat, struct vec *res){
 
 
 /*
-*   Calculate the zero-meaned matrix from a matrix.
+*   Calculate the zero-meaned matrix from a linear matrix.
 *   
 *   @param mat The matrix.
 *   @param z The zero-meaned matrix.
 */
-void calculateZeroMeaned(struct matrix *mat, struct matrix *z){
+void calculateZeroMeaned(struct linearmatrix *mat, struct linearmatrix *z){
     struct vec *mean;
     mean = malloc(sizeof(struct vec)); 
     if(mean == NULL) exit(1);
@@ -112,11 +106,10 @@ void calculateZeroMeaned(struct matrix *mat, struct matrix *z){
     for(int j=0; j<mat->size[0]; j++){
         //subtract
         for(int k=0; k<mean->size; k++){
-            z->val[j][k] = mat->val[j][k] - mean->val[k];
+            z->val[j*z->size[1]+k] = mat->val[j*mat->size[1]+k] - mean->val[k];
         }
     }
 }
-
 
 /*
 *   Print a matrix in a file. [in the first row print matrix dimensions]
@@ -124,7 +117,7 @@ void calculateZeroMeaned(struct matrix *mat, struct matrix *z){
 *   @param path The path of the file.
 *   @param mat The matrix.
 */
-void printMatrixToFile(char path[], struct matrix *mat){
+void printMatrixToFile(char path[], struct linearmatrix *mat){
     FILE *fp;
     fp = fopen(path,"w");
     fprintf(fp, "%d %d\n", mat->size[0], mat->size[1]);
@@ -132,7 +125,7 @@ void printMatrixToFile(char path[], struct matrix *mat){
     fp = fopen(path, "a");
     for(int i=0; i<mat->size[0]; i++){
         for(int j=0; j<mat->size[1]; j++){
-            fprintf(fp, "%.2f", (float)mat->val[i][j]);
+            fprintf(fp, "%.2f", (float)mat->val[i*mat->size[1]+j]);
             if(j != mat->size[1]-1)  fprintf(fp, " ");
         }
         fprintf(fp, "\n");
@@ -140,58 +133,39 @@ void printMatrixToFile(char path[], struct matrix *mat){
     fclose(fp);
 }
 
-/*
-*   Free up the memory space used by the matrix.
-*
-*   @param mat The matrix.
-*/
-void freeMatrix(struct matrix *mat){
-    for(int i=0; i<mat->size[0]; i++){
-        free(mat->val[i]);
-    }
-    free(mat->val);
-    free(mat->size);
-}
-
 
 /*
-*   Print a matrix to stdout.
+*   Print a linear matrix to stdout.
 *
+*   @see The definition of linear matrix at the start of this .c.
 *   @param mat The matrix.
 */
-void printMatrix(struct matrix *mat){
-    for(int i=0; i<mat->size[0]; i++){
-        for(int j=0; j<mat->size[1]; j++){
-            printf("%.2f ", mat->val[i][j]);
-        }
-        if(i!=mat->size[0]-1)   printf("\n");
+void printLinMatrix(struct linearmatrix *mat){
+    for(int i=0; i<(mat->size[0] * mat->size[1]); i++){
+        if(i%mat->size[1] == 0) printf("\n");
+        printf("%.2f ", mat->val[i]);
     }
+    printf("\n");
 }
-
 
 
 void main(){
-    //read
-    struct matrix mat;
-    readMatrix("./matrix.txt", &mat);
+    struct linearmatrix mat;
+    readLinMatrix("./matrix.txt", &mat);
 
     //allocate z
-    struct matrix z;
-    z.size = malloc(2 * sizeof(int));
+    struct linearmatrix z;
     z.size[0] = mat.size[0];
     z.size[1] = mat.size[1];
     z.val = malloc(z.size[0] * sizeof(int*));
     if(z.val == NULL) exit(1);
-    for(int j=0; j<mat.size[0]; j++){
-        z.val[j] = malloc(z.size[1] * sizeof(float));
-        if(z.val[j] == NULL)   exit(1);
-    }
+
     calculateZeroMeaned(&mat, &z);
 
     //print
     printMatrixToFile("./out.txt", &z);
     
     //freeMatrix(&mat);
-    freeMatrix(&mat);
-    freeMatrix(&z);
+    free(mat.val);
+    free(z.val);
 }
