@@ -78,6 +78,19 @@ void printMatrix(struct matrix *mat){
     }
 }
 
+/*
+*   Free up the memory space used by the matrix.
+*
+*   @param mat The matrix.
+*/
+void freeMatrix(struct matrix *mat){
+    for(int i=0; i<mat->size[0]; i++){
+        free(mat->val[i]);
+    }
+    free(mat->val);
+    free(mat->size);
+}
+
 void main(){
     //read
     struct matrix mat;
@@ -86,6 +99,5 @@ void main(){
     //print
     printMatrix(&mat);
 
-    free(mat.size);
-    free(*mat.val);
+    freeMatrix(&mat);
 }
