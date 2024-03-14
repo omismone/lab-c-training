@@ -28,7 +28,7 @@
 
 
 /*
-*   Matrix structure that contains the matrix and its size. //optimizing memory access linear.
+*   Matrix structure that contains the matrix and its size. //optimizing memory access speed.
 */
 struct linearmatrix{
     float *val;   // The values.
